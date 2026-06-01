@@ -4,10 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>OneStop GatePass Matrix Suite</title>
+  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
@@ -15,560 +20,235 @@
 <div class="toast-stack" id="toastStack"></div>
 <div id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-<!-- ══ AUTH ══ -->
 <div id="authContainer">
   <div class="auth-card">
     <div class="text-center mb-4">
       <div class="auth-logo-ring"><i class="fas fa-shield-alt"></i></div>
       <h3 class="mb-1">OneStop Portal</h3>
-      <p class="mb-0">Gate Control & Management System</p>
+      <p class="mb-3 text-muted">Gate Control & Management System</p>
     </div>
-    <div class="auth-error" id="authError"><i class="fas fa-exclamation-triangle"></i><span id="authErrorMsg"></span></div>
-    <div class="mb-3">
-      <label class="form-label">Username</label>
-      <input type="text" id="loginUsername" class="form-control" placeholder="Enter username" autocomplete="username">
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Password</label>
-      <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <div class="mb-4 p-3 rounded" style="background:rgba(15,76,129,0.06);border:1px solid rgba(15,76,129,0.15)">
-      <div style="font-size:11px;font-weight:700;color:#0f4c81;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em"><i class="fas fa-key me-1"></i>Demo Credentials</div>
-      <div style="font-size:11.5px;color:#475569;line-height:1.9;font-family:'IBM Plex Mono',monospace">
-        admin / admin123 <span style="color:#059669;font-weight:700">(Admin)</span><br>
-        supervisor / super123 <span style="color:#d97706;font-weight:700">(Supervisor)</span><br>
-        security / sec123 <span style="color:#0891b2;font-weight:700">(Security)</span>
+    <form id="loginForm" onsubmit="executeLogin(event)">
+      <div class="mb-3">
+        <label class="form-label font-monospace" style="font-size:12px; text-transform:uppercase; letter-spacing:1px;">Username</label>
+        <input type="text" id="loginUser" class="form-control" required placeholder="Enter username">
       </div>
-    </div>
-    <button class="btn-brand w-100" id="loginBtn" onclick="doLogin()">
-      <i class="fas fa-sign-in-alt me-2"></i>ACCESS SYSTEM
-    </button>
-    <p class="text-center mt-3 mb-0" style="font-size:11px;color:var(--text-3)">Transmech LLC — Secure Gate Management Portal</p>
+      <div class="mb-4">
+        <label class="form-label font-monospace" style="font-size:12px; text-transform:uppercase; letter-spacing:1px;">Password</label>
+        <input type="password" id="loginPass" class="form-control" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn btn-brand w-100 py-2.5">Authenticate</button>
+    </form>
   </div>
 </div>
 
-<!-- ══ APP ══ -->
-<div id="appContainer">
-  <aside id="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-mark">
-        <div class="logo-icon"><i class="fas fa-cubes"></i></div>
-        <div>
-          <div class="logo-text">TM</div>
-          <div class="logo-sub">GatePass Suite</div>
-        </div>
-      </div>
-      <button class="sidebar-close-btn" onclick="closeSidebar()"><i class="fas fa-times"></i></button>
-    </div>
-    <div class="user-strip">
-      <div class="user-avatar" id="sidebarAvatar">A</div>
-      <div>
-        <div class="user-name" id="sidebarName">Admin</div>
-        <div class="user-role" id="sidebarRole">Admin</div>
-      </div>
-    </div>
-    <nav class="nav-section" id="navSection"></nav>
-    <div class="sidebar-footer">
-      <button class="logout-btn" onclick="doLogout()"><i class="fas fa-power-off"></i> Terminate Session</button>
-    </div>
-  </aside>
+<div id="appContainer" style="display:none;"></div>
 
-  <header id="topbar">
-    <button class="topbar-toggle" onclick="openSidebar()"><i class="fas fa-bars"></i></button>
-    <div class="topbar-brand"><i class="fas fa-warehouse"></i><span>Transmech LLC — Main Industrial Branch, Dubai</span></div>
-    <div class="topbar-right"><div class="clock-chip" id="liveClock">00:00:00</div></div>
-  </header>
-
-  <main id="mainContent">
-
-    <!-- DASHBOARD -->
-    <div class="app-pane" id="pane-dashboard">
-      <div class="page-hdr">
-        <div>
-          <div class="page-title"><i class="fas fa-chart-pie"></i>Operational Overview</div>
-          <div class="page-sub">Live gate activity metrics and analytics</div>
-        </div>
-        <div class="d-flex gap-2 flex-wrap">
-          <button class="btn-solid btn-solid-brand" onclick="navToPane('pane-create')"><i class="fas fa-plus"></i> New Pass</button>
-          <button class="btn-outline" onclick="syncData()"><i class="fas fa-sync-alt"></i> Refresh</button>
-        </div>
-      </div>
-      <div class="row g-3 mb-4">
-        <div class="col-6 col-md-4 col-xl-2">
-          <div class="stat-card" style="--card-accent:#059669;--icon-bg:#d1fae5;--icon-color:#059669">
-            <div class="stat-icon"><i class="fas fa-arrow-down"></i></div>
-            <div><div class="stat-value" id="m-inTotal">0</div><div class="stat-label">IN Total</div></div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-xl-2">
-          <div class="stat-card" style="--card-accent:#10b981;--icon-bg:#a7f3d0;--icon-color:#059669">
-            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-            <div><div class="stat-value" id="m-inConfirmed">0</div><div class="stat-label">IN Confirmed</div></div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-xl-2">
-          <div class="stat-card" style="--card-accent:#d97706;--icon-bg:#fef3c7;--icon-color:#d97706">
-            <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
-            <div><div class="stat-value" id="m-inPending">0</div><div class="stat-label">IN Pending</div></div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-xl-2">
-          <div class="stat-card" style="--card-accent:#0f4c81;--icon-bg:#dbeafe;--icon-color:#1d4ed8">
-            <div class="stat-icon"><i class="fas fa-arrow-up"></i></div>
-            <div><div class="stat-value" id="m-outTotal">0</div><div class="stat-label">OUT Total</div></div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-xl-2">
-          <div class="stat-card" style="--card-accent:#3b82f6;--icon-bg:#dbeafe;--icon-color:#2563eb">
-            <div class="stat-icon"><i class="fas fa-check-double"></i></div>
-            <div><div class="stat-value" id="m-outConfirmed">0</div><div class="stat-label">OUT Confirmed</div></div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-xl-2">
-          <div class="stat-card" style="--card-accent:#8b5cf6;--icon-bg:#ede9fe;--icon-color:#7c3aed">
-            <div class="stat-icon"><i class="fas fa-users"></i></div>
-            <div><div class="stat-value" id="m-visitorsActive">0</div><div class="stat-label">Visitors IN</div></div>
-          </div>
-        </div>
-      </div>
-      <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-          <div class="mini-card">
-            <h6><i class="fas fa-boxes me-1" style="color:var(--brand)"></i>Material IN</h6>
-            <div class="d-flex justify-content-between"><span>RTB: <strong id="m-rtbMatIn">0</strong></span><span>NRTB: <strong id="m-nrtbMatIn">0</strong></span></div>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="mini-card">
-            <h6><i class="fas fa-truck me-1" style="color:var(--success)"></i>Material OUT</h6>
-            <div class="d-flex justify-content-between"><span>RTB: <strong id="m-rtbMatOut">0</strong></span><span>NRTB: <strong id="m-nrtbMatOut">0</strong></span></div>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="mini-card">
-            <h6><i class="fas fa-tools me-1" style="color:var(--danger)"></i>Equipment</h6>
-            <div class="d-flex justify-content-between"><span>RTB: <strong id="m-rtbEquipOut">0</strong></span><span>NRTB: <strong id="m-nrtbEquipOut">0</strong></span></div>
-          </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="mini-card">
-            <h6><i class="fas fa-route me-1" style="color:var(--info)"></i>Logistics</h6>
-            <div class="d-flex justify-content-between"><span>Visitors: <strong id="m-visitorsIn">0</strong></span><span>Fleets: <strong id="m-vehiclesIn">0</strong></span></div>
-          </div>
-        </div>
-      </div>
-      <div class="row g-3 mb-3">
-        <div class="col-12">
-          <div class="d-flex justify-content-between align-items-center bg-white border px-3 py-2 rounded shadow-sm flex-wrap gap-2">
-            <span class="small fw-bold text-uppercase text-secondary"><i class="fas fa-chart-line me-1 text-primary"></i>Analytics Engine</span>
-            <div class="d-flex align-items-center gap-2">
-              <label class="form-label m-0 text-muted" style="font-size:11px">Mode:</label>
-              <select id="chartTypeSelector" class="form-select py-1 px-2" style="width:120px;font-size:12px;height:unset" onchange="toggleChartRenderingMode()">
-                <option value="bar">Bar Chart</option>
-                <option value="line">Line Graph</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div class="col-12 col-lg-6">
-          <div class="chart-card">
-            <h6><i class="fas fa-arrow-circle-down" style="color:var(--success)"></i>Inbound Flow (Last 7 Days)</h6>
-            <div class="chart-container-shell"><canvas id="chartInbound"></canvas></div>
-          </div>
-        </div>
-        <div class="col-12 col-lg-6">
-          <div class="chart-card">
-            <h6><i class="fas fa-arrow-circle-up" style="color:var(--brand)"></i>Outbound Flow (Last 7 Days)</h6>
-            <div class="chart-container-shell"><canvas id="chartOutbound"></canvas></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- REGISTRY -->
-    <div class="app-pane" id="pane-registry">
-      <div class="page-hdr">
-        <div>
-          <div class="page-title" id="registryTitle"><i class="fas fa-table"></i>Gate Pass Registry</div>
-          <div class="page-sub">All gate pass records</div>
-        </div>
-        <div class="d-flex gap-2 flex-wrap">
-          <button class="btn-xs btn-xs-danger" id="bulkDeleteBtn" style="display:none" onclick="doBulkDelete()"><i class="fas fa-trash-alt"></i> Delete Selected</button>
-          <button class="btn-solid btn-solid-brand" onclick="navToPane('pane-create')"><i class="fas fa-plus"></i> New Pass</button>
-        </div>
-      </div>
-      <div class="filter-bar">
-        <input type="text" id="registrySearch" placeholder="Search name, pass no, vehicle..." oninput="renderRegistry()">
-        <select id="registryStatusFilter" onchange="renderRegistry()">
-          <option value="">All Status</option>
-          <option value="CONFIRMED">Confirmed</option>
-          <option value="PENDING">Pending</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
-        <div class="text-muted small ms-md-auto fw-bold" id="registryCountLabel" style="font-family:var(--mono);font-size:11px">0 records</div>
-      </div>
-      <div class="tbl-wrap">
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-          <table class="data-tbl">
-            <thead>
-              <tr>
-                <th style="width:40px" id="thBulkCheck"><input type="checkbox" id="masterChk" onchange="toggleAllCheckboxes(this)"></th>
-                <th>Pass No</th><th>Date / Time</th><th>Type</th>
-                <th>Name</th><th>Vehicle</th><th>Status</th>
-                <th class="text-end">Action</th>
-              </tr>
-            </thead>
-            <tbody id="registryBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- VISITOR GATE PASS PANE -->
-    <div class="app-pane" id="pane-visitor">
-      <div class="page-hdr">
-        <div>
-          <div class="page-title"><i class="fas fa-id-card" style="color:#059669"></i>Visitor Gate Pass</div>
-          <div class="page-sub">Register visitor entry, manage exits, and track visit history</div>
-        </div>
-        <div class="d-flex gap-2 flex-wrap">
-          <button class="btn-outline" onclick="syncVisitorData()"><i class="fas fa-sync-alt"></i> Refresh</button>
-          <button class="btn-solid btn-solid-success" onclick="openVisitorEntryModal()"><i class="fas fa-user-plus"></i> New Visitor</button>
-          <button class="btn-solid btn-solid-warn" onclick="openVisitorExitModal()"><i class="fas fa-sign-out-alt"></i> Visitor Exit</button>
-        </div>
-      </div>
-      <div class="filter-bar">
-        <input type="text" id="visitorSearch" placeholder="Search Pass No, Name, ID, Company..." oninput="renderVisitorRegistry()">
-        <select id="visitorStatusFilter" onchange="renderVisitorRegistry()">
-          <option value="">All Status</option>
-          <option value="IN">Currently IN</option>
-          <option value="OUT">Exited (OUT)</option>
-        </select>
-        <div class="text-muted small ms-md-auto fw-bold" id="visitorCountLabel" style="font-family:var(--mono);font-size:11px">0 records</div>
-      </div>
-      <div class="tbl-wrap">
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-          <table class="data-tbl">
-            <thead>
-              <tr>
-                <th>Pass No</th><th>Visitor Name</th><th>ID / Passport</th>
-                <th>Company</th><th>Phone</th><th>In Time</th><th>Out Time</th>
-                <th>Duration</th><th>Status</th><th class="text-end">Action</th>
-              </tr>
-            </thead>
-            <tbody id="visitorRegistryBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- CREATE PASS -->
-    <div class="app-pane" id="pane-create">
-      <div class="page-hdr">
-        <div>
-          <div class="page-title"><i class="fas fa-pen-fancy"></i>Issue Secure Gate Pass</div>
-          <div class="page-sub">Generate incoming or outgoing credentials</div>
-        </div>
-        <button class="btn-outline" onclick="navToPane('pane-dashboard')"><i class="fas fa-arrow-left"></i> Back</button>
-      </div>
-      <form id="passForm" onsubmit="submitPass(event)">
-        <div class="row g-3">
-          <div class="col-lg-8">
-            <div class="form-card">
-              <div class="form-card-title"><i class="fas fa-sliders-h"></i>Core Parameters</div>
-              <div class="row g-3">
-                <div class="col-md-4">
-                  <label class="form-label">Pass Direction *</label>
-                  <select id="p-direction" class="form-select" required>
-                    <option value="IN">INBOUND (Entering)</option>
-                    <option value="OUT">OUTBOUND (Leaving)</option>
-                  </select>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Gate Number *</label>
-                  <select id="p-gateNo" class="form-select" required>
-                    <option value="Gate 1">Gate 1 — Main Entrance</option>
-                    <option value="Gate 2">Gate 2 — Cargo Warehouse</option>
-                    <option value="Gate 3">Gate 3 — Logistics Yard</option>
-                  </select>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Pass Category *</label>
-                  <select id="p-passType" class="form-select" required onchange="handlePassTypeFields()">
-                    <option value="Visitor">Visitor Entry</option>
-                    <option value="Material Returnable">Material — Returnable (RTB)</option>
-                    <option value="Material Non-Returnable">Material — Non-Returnable (NRTB)</option>
-                    <option value="Equipment Returnable">Equipment — Returnable (RTB)</option>
-                    <option value="Equipment Non-Returnable">Equipment — Non-Returnable (NRTB)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div class="form-card">
-              <div class="form-card-title"><i class="fas fa-user"></i>Person Details</div>
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label class="form-label">Full Name *</label>
-                  <input type="text" id="p-visitorName" class="form-control" required placeholder="Visitor / Driver / Contractor">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Contact Number</label>
-                  <input type="tel" id="p-contactNo" class="form-control" placeholder="+971 5x xxx xxxx">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Vehicle Plate No</label>
-                  <input type="text" id="p-vehicleNo" class="form-control" placeholder="Plate number">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Identity Document No</label>
-                  <input type="text" id="p-identityNo" class="form-control" placeholder="Emirates ID / Passport">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Company</label>
-                  <input type="text" id="p-company" class="form-control" placeholder="Company name">
-                </div>
-              </div>
-            </div>
-            <div class="form-card">
-              <div class="form-card-title"><i class="fas fa-truck-moving"></i>Material / Logistics</div>
-              <div class="row g-3">
-                <div class="col-md-3">
-                  <label class="form-label">Inter-Company Transfer?</label>
-                  <select id="p-companyTransfer" class="form-select">
-                    <option value="No">No</option>
-                    <option value="Yes">Yes</option>
-                  </select>
-                </div>
-                <div class="col-md-5">
-                  <label class="form-label">Store Incharge</label>
-                  <input type="text" id="p-storeIncharge" class="form-control" placeholder="Authorizing officer">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">PO / Invoice No</label>
-                  <input type="text" id="p-invoiceDocNo" class="form-control" placeholder="Invoice / PO reference">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Gross Weight (KG)</label>
-                  <input type="number" step="0.01" id="p-grossWeight" class="form-control" value="0.00" oninput="calcNetWeight()">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Tare Weight (KG)</label>
-                  <input type="number" step="0.01" id="p-tareWeight" class="form-control" value="0.00" oninput="calcNetWeight()">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Net Weight (KG)</label>
-                  <input type="number" step="0.01" id="p-netWeight" class="form-control" readonly value="0.00" style="background:var(--bg2);font-weight:700">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Transporter / Fleet Company</label>
-                  <input type="text" id="p-transporterName" class="form-control" placeholder="Carrier company">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Consignee / Destination</label>
-                  <input type="text" id="p-consigneeAddress" class="form-control" placeholder="Delivery location">
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-lg-4">
-            <div class="form-card" style="height:100%;display:flex;flex-direction:column">
-              <div class="form-card-title"><i class="fas fa-camera"></i>Identity / Document Capture</div>
-              <div class="camera-box mb-3" id="cameraBox">
-                <video id="formVideoPreview" autoplay playsinline muted style="display:none;width:100%;max-height:220px;object-fit:cover;border-radius:6px"></video>
-                <div id="imgPreviewContainer" style="display:none;position:relative;width:100%">
-                  <img id="formImagePreview" src="" class="preview-img" alt="Captured">
-                  <button type="button" class="remove-photo-btn" onclick="removeCapturedPhoto()" title="Remove">&times;</button>
-                </div>
-                <div class="cam-placeholder" id="camPlaceholder">
-                  <i class="fas fa-camera-retro"></i>
-                  <div>No camera active</div>
-                  <div style="font-size:11px;margin-top:4px">Open Cam or upload a file</div>
-                </div>
-              </div>
-              <div class="cam-warning" id="camWarning">
-                <i class="fas fa-exclamation-triangle me-1"></i>
-                <span id="camWarningMsg">Camera permission denied.</span>
-              </div>
-              <div class="d-flex gap-2 justify-content-center mb-3 flex-wrap">
-                <button type="button" class="btn-xs btn-xs-brand" id="btnStartCam" onclick="startCamera()"><i class="fas fa-video"></i> Open Cam</button>
-                <button type="button" class="btn-xs btn-xs-success" id="btnCapture" onclick="capturePhoto()" disabled><i class="fas fa-camera"></i> Snapshot</button>
-                <button type="button" class="btn-xs btn-xs-danger" id="btnStopCam" onclick="stopCamera()" style="display:none"><i class="fas fa-video-slash"></i> Stop</button>
-              </div>
-              <div class="mb-3">
-                <label class="form-label" style="font-size:11px">Or Upload Image File</label>
-                <input type="file" id="p-file" class="form-control" accept="image/*" onchange="handleMainFormFileUpload(this)">
-              </div>
-              <div class="mb-3 flex-grow-1">
-                <label class="form-label">Description of Items / Particulars *</label>
-                <textarea id="p-items" class="form-control" rows="4" required placeholder="Item names, serials, quantities..."></textarea>
-              </div>
-              <button type="submit" class="btn-solid btn-solid-brand w-100 py-3 mt-auto" id="submitPassBtn" style="font-size:14px">
-                <i class="fas fa-cloud-upload-alt"></i> SUBMIT GATE PASS
-              </button>
-            </div>
-          </div>
-        </div>
-      </form>
-    </div>
-
-    <!-- REPORTS -->
-    <div class="app-pane" id="pane-reports">
-      <div class="page-hdr">
-        <div>
-          <div class="page-title" id="reportPaneTitle"><i class="fas fa-file-invoice"></i>Reports</div>
-          <div class="page-sub">Filter and export gate pass records</div>
-        </div>
-        <button class="btn-outline" onclick="exportReportExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>
-      </div>
-      <div class="form-card mb-3">
-        <div class="row g-3">
-          <div class="col-6 col-md-3"><label class="form-label">From Date</label><input type="date" id="rep-from" class="form-control"></div>
-          <div class="col-6 col-md-3"><label class="form-label">To Date</label><input type="date" id="rep-to" class="form-control"></div>
-          <div class="col-6 col-md-2">
-            <label class="form-label">Direction</label>
-            <select id="rep-direction" class="form-select"><option value="ALL">All</option><option value="IN">Inbound</option><option value="OUT">Outbound</option></select>
-          </div>
-          <div class="col-6 col-md-2">
-            <label class="form-label">Status</label>
-            <select id="rep-status" class="form-select"><option value="ALL">All Status</option><option value="CONFIRMED">Confirmed</option><option value="PENDING">Pending</option><option value="REJECTED">Rejected</option></select>
-          </div>
-          <div class="col-12 col-md-2 d-flex align-items-end">
-            <button class="btn-solid btn-solid-brand w-100" onclick="runReport()"><i class="fas fa-sync-alt"></i> Generate</button>
-          </div>
-        </div>
-      </div>
-      <div class="tbl-wrap">
-        <div class="tbl-head">
-          <h5><i class="fas fa-table" style="color:var(--brand)"></i>Report Results</h5>
-          <span id="reportCount" class="text-muted" style="font-size:12px;font-family:var(--mono)"></span>
-        </div>
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-          <table class="data-tbl">
-            <thead><tr><th>#</th><th>Date / Time</th><th>Pass No</th><th>Direction</th><th>Type</th><th>Name</th><th>Company</th><th>Vehicle</th><th>Status</th></tr></thead>
-            <tbody id="reportBody"><tr><td colspan="9" class="text-center py-4 text-muted">Apply filters above and click Generate</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- SCANNER -->
-    <div class="app-pane" id="pane-scanner">
-      <div class="page-hdr">
-        <div><div class="page-title"><i class="fas fa-qrcode"></i>Pass Scanner</div><div class="page-sub">Verify a gate pass by code</div></div>
-      </div>
-      <div class="scanner-card">
-        <i class="fas fa-expand text-info mb-3" style="font-size:2.5rem"></i>
-        <h5 class="fw-bold mb-1">Gate Pass Verification</h5>
-        <p class="text-muted small mb-4">Enter the Gate Pass reference number to verify</p>
-        <div class="d-flex gap-2 mx-auto mb-4" style="max-width:420px">
-          <input type="text" id="scannerInput" class="form-control text-center" style="font-family:var(--mono);font-size:15px;letter-spacing:0.08em" placeholder="TM-IN-XXXXX or VP-XXXXX" onkeydown="if(event.key==='Enter') doScan()">
-          <button class="btn-solid btn-solid-brand" onclick="doScan()"><i class="fas fa-search"></i></button>
-        </div>
-        <div id="scanResult"></div>
-      </div>
-    </div>
-
-  </main>
-</div>
-
-<!-- PASS DETAIL MODAL -->
 <div class="modal fade" id="passModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
     <div class="modal-content">
-      <div id="passModalBody" style="overflow:hidden;border-radius:var(--radius-lg) var(--radius-lg) 0 0"></div>
-      <div class="modal-footer d-flex justify-content-between align-items-center">
-        <div id="modalActionButtons" class="d-flex gap-2 flex-wrap"></div>
-        <button type="button" class="btn-outline" data-bs-dismiss="modal">Close</button>
+      <div class="modal-header">
+        <h5 class="modal-title d-flex align-items-center gap-2" id="passModalTitle">
+          <i class="fas fa-plus-circle text-brand"></i> <span>Create New Gate Pass</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="passForm">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label required-field">Pass Type</label>
+              <select class="form-select" id="p_passType" required onchange="togglePassTypeFields()">
+                <option value="GOODS">Goods Pass (In/Out)</option>
+                <option value="VISITOR">Visitor / Labor Pass</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label required-field">Direction</label>
+              <select class="form-select" id="p_direction" required>
+                <option value="IN">INBOUND (Entry)</option>
+                <option value="OUT">OUTBOUND (Exit)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label required-field">Company / Party Name</label>
+              <input type="text" class="form-control" id="p_partyName" required placeholder="Transmech LLC / Vendor Name">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label required-field">Requester Name / Dept</label>
+              <input type="text" class="form-control" id="p_requester" required placeholder="Department Reference">
+            </div>
+
+            <div class="col-12 goods-only-field">
+              <div class="p-3 bg-light rounded border">
+                <h6 class="mb-3 font-monospace text-brand" style="font-size:13px; font-weight:600;"><i class="fas fa-truck-moving me-1"></i> LOGISTICS & MATERIAL DETAILS</h6>
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Vehicle Number</label>
+                    <input type="text" class="form-control" id="p_vehicleNo" placeholder="e.g. DXB 12345">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Driver Name</label>
+                    <input type="text" class="form-control" id="p_driverName">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Driver Mobile / ID</label>
+                    <input type="text" class="form-control" id="p_driverContact">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Reference Type</label>
+                    <select class="form-select" id="p_refType">
+                      <option value="LPO">LPO (Purchase Order)</option>
+                      <option value="DELIVERY_NOTE">Delivery Note</option>
+                      <option value="INVOICE">Invoice</option>
+                      <option value="OTHER">Other / Internal</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Reference Document #</label>
+                    <input type="text" class="form-control" id="p_refNo" placeholder="No.">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Material Description Items</label>
+                    <textarea class="form-control" id="p_description" rows="2" placeholder="List itemized descriptions here..."></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 visitor-only-field" style="display:none">
+              <div class="p-3 bg-light rounded border">
+                <h6 class="mb-3 font-monospace text-success" style="font-size:13px; font-weight:600;"><i class="fas fa-user-check me-1"></i> VISITATION CREDENTIALS</h6>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Visitor Name</label>
+                    <input type="text" class="form-control" id="p_vName">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Emirates ID / Passport</label>
+                    <input type="text" class="form-control" id="p_vIdNo">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Purpose of Visit</label>
+                    <input type="text" class="form-control" id="p_vPurpose" placeholder="Maintenance, Audit, Meeting">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Host Person Escort</label>
+                    <input type="text" class="form-control" id="p_vHost" placeholder="Staff Name">
+                  </div>
+                  <div class="col-md-10">
+                    <label class="form-label">Live Snap Identification</label>
+                    <div id="cameraPreviewContainer" class="camera-box" style="display:none">
+                      <video id="videoFeed" autoplay playsinline></video>
+                    </div>
+                    <div id="snapshotPreviewContainer" class="snapshot-preview" style="display:none">
+                      <img id="snapshotImage" src="" alt="Captured Profile">
+                    </div>
+                  </div>
+                  <div class="col-md-2 d-flex flex-column justify-content-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnStartCam" onclick="startCamera()"><i class="fas fa-video"></i> Start</button>
+                    <button type="button" class="btn btn-brand btn-sm w-100" id="btnCapture" onclick="captureSnapshot()" style="display:none"><i class="fas fa-camera"></i> Snap</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" id="btnResetCam" onclick="resetCamera()" style="display:none"><i class="fas fa-redo"></i> Retake</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">General Remarks / Security Annotations</label>
+              <textarea class="form-control" id="p_remarks" rows="2"></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-outline" data-bs-dismiss="modal">Discard</button>
+        <button type="button" class="btn-brand px-4" onclick="commitPassSave()">Save GatePass</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- VISITOR ENTRY MODAL -->
 <div class="modal fade" id="visitorEntryModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-user-plus me-2" style="color:#059669"></i>New Visitor Entry Registration</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>New Visitor Gate Entry</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body" style="padding:1.25rem">
-        <div class="row g-3">
-          <div class="col-lg-7">
-            <div class="row g-3">
-              <div class="col-md-6"><label class="form-label">Visitor Full Name *</label><input type="text" id="v-name" class="form-control" placeholder="Enter full name"></div>
-              <div class="col-md-6"><label class="form-label">Emirates ID / Passport No *</label><input type="text" id="v-idno" class="form-control" placeholder="784-XXXX-XXXXXXX-X or Passport"></div>
-              <div class="col-md-6"><label class="form-label">Company / Organization *</label><input type="text" id="v-company" class="form-control" placeholder="Company or organization name"></div>
-              <div class="col-md-6"><label class="form-label">Mobile Number *</label><input type="tel" id="v-mobile" class="form-control" placeholder="+971 5X XXX XXXX"></div>
-              <div class="col-12"><label class="form-label">Address</label><input type="text" id="v-address" class="form-control" placeholder="Visitor's home / company address"></div>
-              <div class="col-md-6">
-                <label class="form-label">Purpose of Visit *</label>
-                <select id="v-purpose" class="form-select">
-                  <option value="">— Select Purpose —</option>
-                  <option value="Business Meeting">Business Meeting</option>
-                  <option value="Delivery / Collection">Delivery / Collection</option>
-                  <option value="Maintenance / Repair">Maintenance / Repair</option>
-                  <option value="Audit / Inspection">Audit / Inspection</option>
-                  <option value="Interview">Interview</option>
-                  <option value="Training">Training</option>
-                  <option value="Personal">Personal</option>
-                  <option value="Other">Other</option>
-                </select>
+      <div class="modal-body">
+        <form id="visitorEntryForm">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label required-field">Full Name</label>
+              <input type="text" class="form-control" id="ve_name" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label required-field">Company / Agency</label>
+              <input type="text" class="form-control" id="ve_company" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label required-field">ID Document Type</label>
+              <select class="form-select" id="ve_idType" required>
+                <option value="Emirates ID">Emirates ID Card</option>
+                <option value="Passport">International Passport</option>
+                <option value="Driving License">Driving License</option>
+                <option value="Other">Other Official ID</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label required-field">ID Document Number</label>
+              <input type="text" class="form-control" id="ve_idNo" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label required-field">Mobile Contact</label>
+              <input type="text" class="form-control" id="ve_contact" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label required-field">Host Staff Contact / Department</label>
+              <input type="text" class="form-control" id="ve_host" required placeholder="Person / Section">
+            </div>
+            <div class="col-12">
+              <label class="form-label required-field">Purpose of Access Entry</label>
+              <input type="text" class="form-control" id="ve_purpose" required placeholder="e.g., HVAC Maintenance, Board Meeting">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Visitor Identity Capture Tracking</label>
+              <div id="vcameraPreviewContainer" class="camera-box" style="display:none">
+                <video id="vvideoFeed" autoplay playsinline></video>
               </div>
-              <div class="col-md-6"><label class="form-label">Person to Meet *</label><input type="text" id="v-meeting" class="form-control" placeholder="Employee name / department"></div>
-              <div class="col-md-6">
-                <label class="form-label">Gate Number</label>
-                <select id="v-gate" class="form-select">
-                  <option value="Gate 1">Gate 1 — Main Entrance</option>
-                  <option value="Gate 2">Gate 2 — Cargo Warehouse</option>
-                  <option value="Gate 3">Gate 3 — Logistics Yard</option>
-                </select>
+              <div id="vsnapshotPreviewContainer" class="snapshot-preview" style="display:none">
+                <img id="vsnapshotImage" src="" alt="Captured Security Log">
               </div>
-              <div class="col-md-6"><label class="form-label">In Time</label><input type="text" id="v-intime" class="form-control" readonly style="background:var(--bg2);font-family:var(--mono);font-weight:700;color:var(--brand)"></div>
+            </div>
+            <div class="col-md-4 d-flex flex-column justify-content-end gap-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="vbtnStartCam" onclick="startVisitorCamera()"><i class="fas fa-video"></i> Init Camera</button>
+              <button type="button" class="btn btn-success btn-sm w-100" id="vbtnCapture" onclick="captureVisitorSnapshot()" style="display:none"><i class="fas fa-camera"></i> Capture Face</button>
+              <button type="button" class="btn btn-outline-danger btn-sm w-100" id="vbtnResetCam" onclick="resetVisitorCamera()" style="display:none"><i class="fas fa-redo"></i> Flush Snapshot</button>
             </div>
           </div>
-          <div class="col-lg-5">
-            <label class="form-label">Visitor Photo</label>
-            <div class="vcam-box mb-2" id="vcamBox">
-              <video id="vcamVideo" autoplay playsinline muted style="display:none;width:100%;max-height:220px;object-fit:cover;border-radius:8px"></video>
-              <div id="vcamPreviewWrap" style="display:none;position:relative;width:100%">
-                <img id="vcamPreviewImg" src="" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;display:block" alt="Visitor Photo">
-                <button type="button" onclick="clearVisitorPhoto()" style="position:absolute;top:6px;right:6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px">&times;</button>
-              </div>
-              <div class="vcam-placeholder" id="vcamPlaceholder"><i class="fas fa-camera-retro"></i><div style="font-size:12px">No photo captured</div></div>
-            </div>
-            <div class="d-flex gap-2 justify-content-center mb-3 flex-wrap">
-              <button type="button" class="btn-xs btn-xs-brand" id="vBtnStart" onclick="startVisitorCamera()"><i class="fas fa-video"></i> Open Cam</button>
-              <button type="button" class="btn-xs btn-xs-success" id="vBtnSnap" onclick="snapVisitorPhoto()" disabled><i class="fas fa-camera"></i> Capture</button>
-              <button type="button" class="btn-xs btn-xs-danger" id="vBtnStop" onclick="stopVisitorCamera()" style="display:none"><i class="fas fa-video-slash"></i> Stop</button>
-            </div>
-            <label class="form-label" style="font-size:11px">Or Upload Photo</label>
-            <input type="file" id="v-photo-file" class="form-control" accept="image/*" onchange="handleVisitorPhotoUpload(this)">
-          </div>
-        </div>
+        </form>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-outline" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn-solid btn-solid-success" onclick="submitVisitorEntry()"><i class="fas fa-cloud-upload-alt"></i> Register & Issue Gate Pass</button>
+        <button type="button" class="btn btn-success px-4" onclick="commitVisitorEntry()">Authorize Entry</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- VISITOR EXIT MODAL -->
 <div class="modal fade" id="visitorExitModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-sign-out-alt me-2" style="color:var(--warning)"></i>Visitor Exit — Gate Pass Lookup</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="fas fa-sign-out-alt me-2"></i>Process Outbound Visitor Departure</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body" style="padding:1.25rem">
+      <div class="modal-body">
         <div id="exitStep1">
-          <p class="text-muted small mb-3">Enter the Gate Pass Number to retrieve visitor information and record exit.</p>
-          <div class="d-flex gap-2 mb-4">
-            <input type="text" id="exit-passno-input" class="form-control" style="font-family:var(--mono);font-size:15px;letter-spacing:0.05em" placeholder="VP-XXXXX" onkeydown="if(event.key==='Enter') lookupVisitorForExit()">
-            <button class="btn-solid btn-solid-brand" onclick="lookupVisitorForExit()"><i class="fas fa-search"></i></button>
+          <p class="text-muted" style="font-size:14px">Search visitor by full matching name or document identity token to clear terminal exit access parameters:</p>
+          <div class="input-group mb-3">
+            <input type="text" id="exitSearchQuery" class="form-control" placeholder="Search Identity / Name Details...">
+            <button class="btn btn-brand" onclick="lookupVisitorForExit()"><i class="fas fa-search"></i></button>
           </div>
           <div id="exitLookupResult"></div>
         </div>
@@ -581,11 +261,10 @@
   </div>
 </div>
 
-<!-- VISITOR DETAIL MODAL -->
 <div class="modal fade" id="visitorDetailModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
     <div class="modal-content">
-      <div id="visitorDetailBody" style="overflow:hidden;border-radius:var(--radius-lg) var(--radius-lg) 0 0"></div>
+      <div id="visitorDetailBody" style="overflow:hidden; border-radius:var(--radius-lg) var(--radius-lg) 0 0"></div>
       <div class="modal-footer d-flex justify-content-between align-items-center">
         <div id="visitorDetailActions" class="d-flex gap-2 flex-wrap"></div>
         <button type="button" class="btn-outline" data-bs-dismiss="modal">Close</button>
@@ -598,9 +277,7 @@
 <canvas id="vcaptureCanvas" style="display:none"></canvas>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="/js/api.js"></script>
-<script src="/js/app.js"></script>
+<script src="/api.js"></script>
+<script src="/app.js"></script>
 </body>
 </html>
